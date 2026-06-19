@@ -1,6 +1,7 @@
-manifest.json{
+{
   "name": "OT Calculator",
   "short_name": "OT",
+  "description": "แอปคำนวณค่าล่วงเวลา OT",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
