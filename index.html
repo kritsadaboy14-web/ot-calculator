@@ -430,6 +430,14 @@ function exportExcel(){
 
 loadHistory();
 
+const savedSalary = localStorage.getItem("salary");
+if(savedSalary){
+    document.getElementById("salary").value = savedSalary;
+}
+document.getElementById("salary").addEventListener("change", function(){
+    localStorage.setItem("salary", this.value);
+});
+
 if ('serviceWorker' in navigator) {
 
     window.addEventListener('load', () => {
