@@ -1,456 +1,125 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-
 <meta charset="UTF-8">
-
-<meta name="viewport"
-content="width=device-width, initial-scale=1.0">
-
-<link rel="manifest"
-href="manifest.json">
-
-<meta name="theme-color"
-content="#1976d2">
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1976d2">
 <link rel="apple-touch-icon" href="icon-192.png">
-
 <title>OT Calculator</title>
-
-</head>
-
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-
 <style>
-body{
-    font-family:Arial,sans-serif;
-    max-width:1000px;
-    margin:auto;
-    padding:20px;
-}
-
-h1,h2,h3{
-    text-align:center;
-}
-
-input,select,button{
-    width:100%;
-    padding:10px;
-    margin:5px 0 15px 0;
-    box-sizing:border-box;
-}
-
-button{
-    cursor:pointer;
-}
-
-table{
-    width:100%;
-    border-collapse:collapse;
-    margin-top:20px;
-}
-
-th,td{
-    border:1px solid #ccc;
-    padding:8px;
-    text-align:center;
-}
-
-.result{
-    background:#f5f5f5;
-    padding:15px;
-    border-radius:8px;
-    margin-top:15px;
-}
-
-.action-btn{
-    width:auto;
-    padding:5px 10px;
-}
+body{font-family:Arial,sans-serif;max-width:1000px;margin:auto;padding:20px;}
+h1,h2,h3{text-align:center;}
+input,select,button{width:100%;padding:10px;margin:5px 0 15px 0;box-sizing:border-box;}
+button{cursor:pointer;}
+table{width:100%;border-collapse:collapse;margin-top:20px;}
+th,td{border:1px solid #ccc;padding:8px;text-align:center;}
+.result{background:#f5f5f5;padding:15px;border-radius:8px;margin-top:15px;}
+.action-btn{width:auto;padding:5px 10px;}
 </style>
 </head>
-
 <body>
-<script>
-
-if("serviceWorker" in navigator){
-
-    navigator.serviceWorker
-    .register("./service-worker.js");
-
-}
-
-</script>
 <h1>OT Calculator</h1>
-
 <label>เงินเดือน (บาท)</label>
 <input type="number" id="salary">
-
 <label>วันที่</label>
 <input type="date" id="workDate">
-
 <label>เวลาเข้างาน</label>
 <input type="time" id="startTime">
-
 <label>เวลาออกงาน</label>
 <input type="time" id="endTime">
-
-<button onclick="calculateOT()">
-คำนวณและบันทึก
-</button>
-
-<button onclick="exportExcel()">
-ส่งออก Excel
-</button>
-
-<button onclick="clearHistory()">
-ล้างประวัติทั้งหมด
-</button>
-
-<div class="result" id="result">
-ยังไม่มีข้อมูล
-</div>
-
+<button onclick="calculateOT()">คำนวณและบันทึก</button>
+<button onclick="exportExcel()">ส่งออก Excel</button>
+<button onclick="clearHistory()">ล้างประวัติทั้งหมด</button>
+<div class="result" id="result">ยังไม่มีข้อมูล</div>
 <div class="result">
 <h3>สรุปรายเดือน</h3>
-<div id="monthlySummary">
-ยังไม่มีข้อมูล
+<div id="monthlySummary">ยังไม่มีข้อมูล</div>
 </div>
-</div>
-
 <h2>ประวัติ OT</h2>
-
 <table>
 <thead>
-<tr>
-<th>วันที่</th>
-<th>เข้า</th>
-<th>ออก</th>
-<th>OT (ชม.)</th>
-<th>เงิน OT</th>
-<th>ลบ</th>
-</tr>
+<tr><th>วันที่</th><th>เข้า</th><th>ออก</th><th>OT (ชม.)</th><th>เงิน OT</th><th>ลบ</th></tr>
 </thead>
-
-<tbody id="historyTable">
-</tbody>
-
+<tbody id="historyTable"></tbody>
 </table>
-
 <script>
-
-function getHourlyRate(salary){
-
-    return salary / 30 / 8;
-
-}
-
-function timeToMinutes(time){
-
-    const [h,m] = time.split(":").map(Number);
-
-    return h * 60 + m;
-
-}
-
+function getHourlyRate(salary){ return salary/30/8; }
+function timeToMinutes(time){ const [h,m]=time.split(":").map(Number); return h*60+m; }
 function calculateOT(){
-
-    const salary =
-        parseFloat(
-            document.getElementById("salary").value
-        );
-
-    const date =
-        document.getElementById("workDate").value;
-
-    const startTime =
-        document.getElementById("startTime").value;
-
-    const endTime =
-        document.getElementById("endTime").value;
-
-    if(!date){
-
-        alert("กรุณาเลือกวันที่");
-        return;
-
-    }
-
-    if(!startTime || !endTime){
-
-        alert("กรุณากรอกเวลา");
-        return;
-
-    }
-
-    let start =
-        timeToMinutes(startTime);
-
-    let end =
-        timeToMinutes(endTime);
-
-    if(end < start){
-
-        end += 1440;
-
-    }
-
-    const workedMinutes =
-        end - start;
-
-    const normalMinutes =
-        9 * 60;
-
-    let otMinutes =
-        workedMinutes - normalMinutes;
-
-    if(otMinutes < 0){
-
-        otMinutes = 0;
-
-    }
-
-    const otHours =
-        otMinutes / 60;
-
-    const hourlyRate =
-        getHourlyRate(salary);
-
-    const otPay =
-        hourlyRate * 1.5 * otHours;
-
-    document.getElementById("result").innerHTML = `
-        <b>ทำงานจริง:</b>
-        ${(workedMinutes/60).toFixed(2)} ชั่วโมง<br>
-
-        <b>OT:</b>
-        ${otHours.toFixed(2)} ชั่วโมง<br>
-
-        <b>เงิน OT:</b>
-        ${otPay.toFixed(2)} บาท
-    `;
-
-    const record = {
-
-        date: date,
-        startTime: startTime,
-        endTime: endTime,
-        hours: otHours.toFixed(2),
-        pay: otPay.toFixed(2)
-
-    };
-
-    let history =
-        JSON.parse(
-            localStorage.getItem("otHistory")
-        ) || [];
-
-    history.push(record);
-
-    localStorage.setItem(
-        "otHistory",
-        JSON.stringify(history)
-    );
-
-    loadHistory();
-
+  const salary=parseFloat(document.getElementById("salary").value);
+  const date=document.getElementById("workDate").value;
+  const startTime=document.getElementById("startTime").value;
+  const endTime=document.getElementById("endTime").value;
+  if(!date){ alert("กรุณาเลือกวันที่"); return; }
+  if(!startTime||!endTime){ alert("กรุณากรอกเวลา"); return; }
+  let start=timeToMinutes(startTime);
+  let end=timeToMinutes(endTime);
+  if(end<start) end+=1440;
+  const workedMinutes=end-start;
+  const otMinutes=Math.max(0,workedMinutes-9*60);
+  const otHours=otMinutes/60;
+  const otPay=getHourlyRate(salary)*1.5*otHours;
+  document.getElementById("result").innerHTML=`<b>ทำงานจริง:</b> ${(workedMinutes/60).toFixed(2)} ชั่วโมง<br><b>OT:</b> ${otHours.toFixed(2)} ชั่วโมง<br><b>เงิน OT:</b> ${otPay.toFixed(2)} บาท`;
+  let history=JSON.parse(localStorage.getItem("otHistory"))||[];
+  history.push({date,startTime,endTime,hours:otHours.toFixed(2),pay:otPay.toFixed(2)});
+  localStorage.setItem("otHistory",JSON.stringify(history));
+  loadHistory();
 }
-
 function deleteRecord(index){
-
-    let history =
-        JSON.parse(
-            localStorage.getItem("otHistory")
-        ) || [];
-
-    history.splice(index,1);
-
-    localStorage.setItem(
-        "otHistory",
-        JSON.stringify(history)
-    );
-
-    loadHistory();
-
+  let history=JSON.parse(localStorage.getItem("otHistory"))||[];
+  history.splice(index,1);
+  localStorage.setItem("otHistory",JSON.stringify(history));
+  loadHistory();
 }
-
 function clearHistory(){
-
-    if(confirm("ล้างข้อมูลทั้งหมด ?")){
-
-        localStorage.removeItem(
-            "otHistory"
-        );
-
-        loadHistory();
-
-    }
-
+  if(confirm("ล้างข้อมูลทั้งหมด ?")){
+    localStorage.removeItem("otHistory");
+    loadHistory();
+  }
 }
-
 function loadHistory(){
-
-    let history =
-        JSON.parse(
-            localStorage.getItem("otHistory")
-        ) || [];
-
-    let html = "";
-
-    let totalHours = 0;
-    let totalPay = 0;
-
-    const monthly = {};
-
-    history.forEach((item,index)=>{
-
-        totalHours += Number(item.hours);
-        totalPay += Number(item.pay);
-
-        const month =
-            item.date.substring(0,7);
-
-        if(!monthly[month]){
-
-            monthly[month] = {
-
-                hours:0,
-                pay:0
-
-            };
-
-        }
-
-        monthly[month].hours +=
-            Number(item.hours);
-
-        monthly[month].pay +=
-            Number(item.pay);
-
-        html += `
-        <tr>
-            <td>${item.date}</td>
-            <td>${item.startTime}</td>
-            <td>${item.endTime}</td>
-            <td>${item.hours}</td>
-            <td>${item.pay}</td>
-            <td>
-                <button
-                class="action-btn"
-                onclick="deleteRecord(${index})">
-                ลบ
-                </button>
-            </td>
-        </tr>
-        `;
-
-    });
-
-    html += `
-    <tr>
-        <th colspan="3">
-        รวมทั้งหมด
-        </th>
-
-        <th>
-        ${totalHours.toFixed(2)}
-        </th>
-
-        <th>
-        ${totalPay.toFixed(2)}
-        </th>
-
-        <th></th>
-    </tr>
-    `;
-
-    document.getElementById(
-        "historyTable"
-    ).innerHTML = html;
-
-    let summaryHTML = "";
-
-    for(const month in monthly){
-
-        summaryHTML += `
-        <p>
-        <b>${month}</b><br>
-        OT:
-        ${monthly[month].hours.toFixed(2)}
-        ชั่วโมง<br>
-
-        เงิน:
-        ${monthly[month].pay.toFixed(2)}
-        บาท
-        </p>
-        `;
-
-    }
-
-    document.getElementById(
-        "monthlySummary"
-    ).innerHTML =
-    summaryHTML || "ยังไม่มีข้อมูล";
-
+  let history=JSON.parse(localStorage.getItem("otHistory"))||[];
+  let html="";
+  let totalHours=0,totalPay=0;
+  const monthly={};
+  history.forEach((item,index)=>{
+    totalHours+=Number(item.hours);
+    totalPay+=Number(item.pay);
+    const month=item.date.substring(0,7);
+    if(!monthly[month]) monthly[month]={hours:0,pay:0};
+    monthly[month].hours+=Number(item.hours);
+    monthly[month].pay+=Number(item.pay);
+    html+=`<tr><td>${item.date}</td><td>${item.startTime}</td><td>${item.endTime}</td><td>${item.hours}</td><td>${item.pay}</td><td><button class="action-btn" onclick="deleteRecord(${index})">ลบ</button></td></tr>`;
+  });
+  html+=`<tr><th colspan="3">รวมทั้งหมด</th><th>${totalHours.toFixed(2)}</th><th>${totalPay.toFixed(2)}</th><th></th></tr>`;
+  document.getElementById("historyTable").innerHTML=html;
+  let summaryHTML="";
+  for(const month in monthly){
+    summaryHTML+=`<p><b>${month}</b><br>OT: ${monthly[month].hours.toFixed(2)} ชั่วโมง<br>เงิน: ${monthly[month].pay.toFixed(2)} บาท</p>`;
+  }
+  document.getElementById("monthlySummary").innerHTML=summaryHTML||"ยังไม่มีข้อมูล";
 }
-
 function exportExcel(){
-
-    const history =
-        JSON.parse(
-            localStorage.getItem("otHistory")
-        ) || [];
-
-    if(history.length === 0){
-
-        alert("ไม่มีข้อมูล");
-
-        return;
-
-    }
-
-    const worksheet =
-        XLSX.utils.json_to_sheet(history);
-
-    const workbook =
-        XLSX.utils.book_new();
-
-    XLSX.utils.book_append_sheet(
-        workbook,
-        worksheet,
-        "OT History"
-    );
-
-    XLSX.writeFile(
-        workbook,
-        "OT_History.xlsx"
-    );
-
+  const history=JSON.parse(localStorage.getItem("otHistory"))||[];
+  if(history.length===0){ alert("ไม่มีข้อมูล"); return; }
+  const worksheet=XLSX.utils.json_to_sheet(history);
+  const workbook=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook,worksheet,"OT History");
+  XLSX.writeFile(workbook,"OT_History.xlsx");
 }
-
 loadHistory();
-
-const savedSalary = localStorage.getItem("salary");
-if(savedSalary){
-    document.getElementById("salary").value = savedSalary;
-}
-document.getElementById("salary").addEventListener("change", function(){
-    localStorage.setItem("salary", this.value);
+const savedSalary=localStorage.getItem("salary");
+if(savedSalary) document.getElementById("salary").value=savedSalary;
+document.getElementById("salary").addEventListener("change",function(){
+  localStorage.setItem("salary",this.value);
 });
-
-if ('serviceWorker' in navigator) {
-
-    window.addEventListener('load', () => {
-
-        navigator.serviceWorker.register(
-            './service-worker.js'
-        );
-
-    });
-
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./service-worker.js');
+  });
 }
-
 </script>
-
 </body>
 </html>
